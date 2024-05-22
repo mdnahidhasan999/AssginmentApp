@@ -1,7 +1,7 @@
-// main.dart
-
 import 'package:flutter/material.dart';
-import 'data_models.dart';
+import 'photo.dart';
+import 'photo_service.dart';
+import 'photo_detail.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,116 +14,62 @@ class MyApp extends StatelessWidget {
       title: 'Photo Gallery',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: AlbumListScreen(),
+      home: PhotoListScreen(),
     );
   }
 }
 
-class AlbumListScreen extends StatelessWidget {
+class PhotoListScreen extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Albums'),
-      ),
-      body: GridView.count(
-        crossAxisCount: 2,
-        children: List.generate(albums.length, (index) {
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PhotoListScreen(album: albums[index]),
-                ),
-              );
-            },
-            child: Card(
-              child: Center(
-                child: Text(albums[index].name),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
+  _PhotoListScreenState createState() => _PhotoListScreenState();
 }
 
-class PhotoListScreen extends StatelessWidget {
-  final Album album;
+class _PhotoListScreenState extends State<PhotoListScreen> {
+  late Future<List<Photo>> futurePhotos;
 
-  PhotoListScreen({required this.album});
+  @override
+  void initState() {
+    super.initState();
+    futurePhotos = PhotoService().fetchPhotos();
+  }
 
   @override
   Widget build(BuildContext context) {
-    List<Photo> albumPhotos = photos; // Filter photos by album name if needed
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(album.name),
+        title: Text('Photo Gallery'),
       ),
-      body: ListView.builder(
-        itemCount: albumPhotos.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PhotoDetailScreen(photo: albumPhotos[index]),
-                ),
-              );
-            },
-            child: ListTile(
-              leading: Image.asset(
-                albumPhotos[index].imageUrl,
-                width: 50,
-                height: 50,
-                fit: BoxFit.cover,
-              ),
-              title: Text(albumPhotos[index].title),
-              subtitle: Text(albumPhotos[index].description),
-            ),
-          );
+      body: FutureBuilder<List<Photo>>(
+        future: futurePhotos,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Failed to load photos: ${snapshot.error}'));
+          } else if (snapshot.hasData) {
+            return ListView.builder(
+              itemCount: snapshot.data?.length,
+              itemBuilder: (context, index) {
+                final photo = snapshot.data![index];
+                return ListTile(
+                  leading: Image.network(photo.thumbnailUrl),
+                  title: Text(photo.title),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PhotoDetailScreen(photo: photo),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          } else {
+            return Center(child: Text('No photos available'));
+          }
         },
-      ),
-    );
-  }
-}
-
-class PhotoDetailScreen extends StatelessWidget {
-  final Photo photo;
-
-  PhotoDetailScreen({required this.photo});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(photo.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              photo.imageUrl,
-              width: 200,
-              height: 200,
-              fit: BoxFit.cover,
-            ),
-            SizedBox(height: 20),
-            Text(
-              photo.title,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 10),
-            Text(photo.description),
-          ],
-        ),
       ),
     );
   }
