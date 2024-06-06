@@ -72,6 +72,7 @@ class _ContactlistscreenState extends State<Contactlistscreen> {
           'Contact List',
           style: TextStyle(fontSize: 20),
           textAlign: TextAlign.center,
+
         ),
       ),
       body: Stack(
